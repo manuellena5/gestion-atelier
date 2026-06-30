@@ -10,6 +10,10 @@ interface UseMedidasResult {
   reload: () => Promise<void>;
   saveMedidaValor: (medida: Medida, valor: string) => Promise<void>;
   addMedida: (data: Pick<Medida, 'clientaId' | 'nombre' | 'valor' | 'unidad' | 'prenda'>) => Promise<Medida>;
+  editMedida: (
+    medida: Medida,
+    data: Pick<Medida, 'nombre' | 'valor' | 'unidad' | 'prenda'>
+  ) => Promise<Medida>;
   removeMedida: (id: string) => Promise<void>;
 }
 
@@ -60,6 +64,17 @@ export function useMedidas(clientaId: string | undefined): UseMedidasResult {
     [reload]
   );
 
+  const editMedida = useCallback(
+    async (medida: Medida, data: Pick<Medida, 'nombre' | 'valor' | 'unidad' | 'prenda'>) => {
+      const updated: Medida = { ...medida, ...data, fecha: new Date().toISOString() };
+      await clientasDb.upsertMedida(updated);
+      await queueAndMaybeSync('syncMedidas', updated);
+      await reload();
+      return updated;
+    },
+    [reload]
+  );
+
   const removeMedida = useCallback(
     async (id: string) => {
       await clientasDb.deleteMedida(id);
@@ -68,5 +83,5 @@ export function useMedidas(clientaId: string | undefined): UseMedidasResult {
     [reload]
   );
 
-  return { medidas, loading, error, reload, saveMedidaValor, addMedida, removeMedida };
+  return { medidas, loading, error, reload, saveMedidaValor, addMedida, editMedida, removeMedida };
 }

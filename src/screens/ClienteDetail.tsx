@@ -6,8 +6,10 @@ import { Modal } from '../components/Modal';
 import { useClientas } from '../hooks/useClientas';
 import { useMedidas } from '../hooks/useMedidas';
 import { usePedidos } from '../hooks/usePedidos';
+import { useLongPress } from '../hooks/useLongPress';
 import { formatFecha, formatMoneda } from '../utils/format';
 import { calcTotalCobrado } from '../utils/calculations';
+import type { Medida } from '../db/schema';
 
 interface ClienteDetailProps {
   clientaId: string;
@@ -15,6 +17,27 @@ interface ClienteDetailProps {
   onEdit: () => void;
   onSelectPedido: (pedidoId: string) => void;
   onNewPedido: (clientaId: string) => void;
+}
+
+interface MedidaExtraCardProps {
+  medida: Medida;
+  onLongPress: (medida: Medida) => void;
+}
+
+function MedidaExtraCard({ medida, onLongPress }: MedidaExtraCardProps): JSX.Element {
+  const longPressHandlers = useLongPress(() => onLongPress(medida));
+
+  return (
+    <div className="card" {...longPressHandlers}>
+      <div className="card-row">
+        <span className="card-title">{medida.nombre}</span>
+        <span>
+          {medida.valor} {medida.unidad}
+        </span>
+      </div>
+      {medida.prenda && <p className="card-meta">Prenda: {medida.prenda}</p>}
+    </div>
+  );
 }
 
 export function ClienteDetail({
@@ -25,7 +48,7 @@ export function ClienteDetail({
   onNewPedido,
 }: ClienteDetailProps): JSX.Element {
   const { clientas } = useClientas();
-  const { medidas, saveMedidaValor, addMedida } = useMedidas(clientaId);
+  const { medidas, saveMedidaValor, addMedida, editMedida, removeMedida } = useMedidas(clientaId);
   const { pedidos } = usePedidos();
 
   const [showExtraModal, setShowExtraModal] = useState(false);
@@ -33,6 +56,14 @@ export function ClienteDetail({
   const [extraValor, setExtraValor] = useState('');
   const [extraUnidad, setExtraUnidad] = useState('cm');
   const [extraPrenda, setExtraPrenda] = useState('');
+
+  const [actionsMedida, setActionsMedida] = useState<Medida | null>(null);
+  const [editingMedida, setEditingMedida] = useState<Medida | null>(null);
+  const [editNombre, setEditNombre] = useState('');
+  const [editValor, setEditValor] = useState('');
+  const [editUnidad, setEditUnidad] = useState('cm');
+  const [editPrenda, setEditPrenda] = useState('');
+  const [deletingMedida, setDeletingMedida] = useState<Medida | null>(null);
 
   const clienta = clientas.find((c) => c.id === clientaId);
   const medidasBasicas = useMemo(() => medidas.filter((m) => m.esBasica), [medidas]);
@@ -62,6 +93,42 @@ export function ClienteDetail({
     setExtraUnidad('cm');
     setExtraPrenda('');
     setShowExtraModal(false);
+  }
+
+  function openActions(medida: Medida): void {
+    setActionsMedida(medida);
+  }
+
+  function startEdit(medida: Medida): void {
+    setEditNombre(medida.nombre);
+    setEditValor(medida.valor);
+    setEditUnidad(medida.unidad);
+    setEditPrenda(medida.prenda ?? '');
+    setEditingMedida(medida);
+    setActionsMedida(null);
+  }
+
+  function startDelete(medida: Medida): void {
+    setDeletingMedida(medida);
+    setActionsMedida(null);
+  }
+
+  async function handleEditSubmit(e: React.FormEvent): Promise<void> {
+    e.preventDefault();
+    if (!editingMedida || !editNombre.trim()) return;
+    await editMedida(editingMedida, {
+      nombre: editNombre.trim(),
+      valor: editValor.trim(),
+      unidad: editUnidad.trim() || 'cm',
+      prenda: editPrenda.trim() || undefined,
+    });
+    setEditingMedida(null);
+  }
+
+  async function handleConfirmDelete(): Promise<void> {
+    if (!deletingMedida) return;
+    await removeMedida(deletingMedida.id);
+    setDeletingMedida(null);
   }
 
   if (!clienta) {
@@ -114,17 +181,10 @@ export function ClienteDetail({
         {medidasExtra.length === 0 && <p className="text-muted">Sin medidas personalizadas.</p>}
         <div className="card-list">
           {medidasExtra.map((medida) => (
-            <Card key={medida.id}>
-              <div className="card-row">
-                <span className="card-title">{medida.nombre}</span>
-                <span>
-                  {medida.valor} {medida.unidad}
-                </span>
-              </div>
-              {medida.prenda && <p className="card-meta">Prenda: {medida.prenda}</p>}
-            </Card>
+            <MedidaExtraCard key={medida.id} medida={medida} onLongPress={openActions} />
           ))}
         </div>
+        <p className="card-meta">Mantené presionada una medida para editarla o borrarla.</p>
         <button
           type="button"
           className="btn btn-secondary"
@@ -220,6 +280,101 @@ export function ClienteDetail({
               </button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {actionsMedida && (
+        <Modal title={actionsMedida.nombre} onClose={() => setActionsMedida(null)}>
+          <div className="modal-actions" style={{ flexDirection: 'column' }}>
+            <button type="button" className="btn btn-secondary" onClick={() => startEdit(actionsMedida)}>
+              Editar
+            </button>
+            <button type="button" className="btn btn-danger" onClick={() => startDelete(actionsMedida)}>
+              Borrar
+            </button>
+            <button type="button" className="btn btn-outline" onClick={() => setActionsMedida(null)}>
+              Cancelar
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {editingMedida && (
+        <Modal title="Editar medida" onClose={() => setEditingMedida(null)}>
+          <form onSubmit={handleEditSubmit}>
+            <div className="field">
+              <label className="field-label" htmlFor="edit-nombre">
+                Nombre *
+              </label>
+              <input
+                id="edit-nombre"
+                className="field-input"
+                value={editNombre}
+                onChange={(e) => setEditNombre(e.target.value)}
+                required
+              />
+            </div>
+            <div className="field-row">
+              <div className="field">
+                <label className="field-label" htmlFor="edit-valor">
+                  Valor
+                </label>
+                <input
+                  id="edit-valor"
+                  className="field-input"
+                  value={editValor}
+                  onChange={(e) => setEditValor(e.target.value)}
+                />
+              </div>
+              <div className="field">
+                <label className="field-label" htmlFor="edit-unidad">
+                  Unidad
+                </label>
+                <input
+                  id="edit-unidad"
+                  className="field-input"
+                  value={editUnidad}
+                  onChange={(e) => setEditUnidad(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="field">
+              <label className="field-label" htmlFor="edit-prenda">
+                Prenda (opcional)
+              </label>
+              <input
+                id="edit-prenda"
+                className="field-input"
+                value={editPrenda}
+                onChange={(e) => setEditPrenda(e.target.value)}
+              />
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-outline" onClick={() => setEditingMedida(null)}>
+                Cancelar
+              </button>
+              <button type="submit" className="btn btn-primary">
+                Guardar
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {deletingMedida && (
+        <Modal title="Borrar medida" onClose={() => setDeletingMedida(null)}>
+          <p>
+            ¿Estás segura de que querés borrar la medida <strong>{deletingMedida.nombre}</strong>? Esta acción no
+            se puede deshacer.
+          </p>
+          <div className="modal-actions">
+            <button type="button" className="btn btn-outline" onClick={() => setDeletingMedida(null)}>
+              Cancelar
+            </button>
+            <button type="button" className="btn btn-danger" onClick={() => void handleConfirmDelete()}>
+              Borrar
+            </button>
+          </div>
         </Modal>
       )}
     </Layout>
