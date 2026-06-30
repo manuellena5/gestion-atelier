@@ -5,11 +5,22 @@ interface AppsScriptResponse {
   message?: string;
   status?: string;
   timestamp?: string;
+  clientas?: unknown[];
+  medidas?: unknown[];
+  pedidos?: unknown[];
 }
+
+export interface RemoteData {
+  clientas: Clienta[];
+  medidas: Medida[];
+  pedidos: Pedido[];
+}
+
+type AppsScriptAction = SyncAction | 'test' | 'fetchAll';
 
 async function postToAppsScript(
   url: string,
-  action: SyncAction | 'test',
+  action: AppsScriptAction,
   data?: Clienta | Pedido | Medida
 ): Promise<AppsScriptResponse> {
   try {
@@ -55,4 +66,19 @@ export async function syncMedida(url: string, medida: Medida): Promise<void> {
   if (!result.success) {
     throw new Error(result.message ?? 'Error al sincronizar medida');
   }
+}
+
+export async function fetchAllFromSheet(url: string): Promise<RemoteData> {
+  const result = await postToAppsScript(url, 'fetchAll');
+  if (!result.success) {
+    throw new Error(
+      result.message ??
+        'No se pudieron obtener los datos de Google Sheets. Verificá que el script tenga la acción "fetchAll" (puede que necesites volver a desplegarlo).'
+    );
+  }
+  return {
+    clientas: (result.clientas ?? []) as Clienta[],
+    medidas: (result.medidas ?? []) as Medida[],
+    pedidos: (result.pedidos ?? []) as Pedido[],
+  };
 }

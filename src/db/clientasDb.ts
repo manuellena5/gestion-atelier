@@ -113,6 +113,15 @@ export async function getMedidasByClienta(clientaId: string): Promise<Medida[]> 
   }
 }
 
+export async function getAllMedidas(): Promise<Medida[]> {
+  try {
+    const db = await getDb();
+    return await db.getAll(STORES.MEDIDAS);
+  } catch (error) {
+    throw new Error(`No se pudieron obtener las medidas: ${String(error)}`);
+  }
+}
+
 export async function upsertMedida(medida: Medida): Promise<Medida> {
   try {
     const db = await getDb();

@@ -10,6 +10,13 @@
  * 7. Ejecutar como: "Yo"
  * 8. Acceso: "Cualquier persona"
  * 9. Copiar la URL generada y pegarla en Configuración de la app
+ *
+ * Si ya tenías este script desplegado y lo estás actualizando (por ejemplo,
+ * para sumar la acción "fetchAll" que trae los datos guardados):
+ * pegá el código nuevo reemplazando el anterior y volvé a "Implementar" →
+ * "Gestionar implementaciones" → ícono de lápiz en la implementación activa →
+ * Versión "Nueva versión" → Implementar. La URL no cambia, no hace falta
+ * actualizarla en la app.
  */
 
 const SPREADSHEET_ID = 'PEGA_AQUI_EL_ID_DE_TU_SPREADSHEET';
@@ -40,6 +47,9 @@ function doPost(e) {
         break;
       case 'syncMedidas':
         result = syncMedidas(ss, data);
+        break;
+      case 'fetchAll':
+        result = fetchAll(ss);
         break;
       default:
         result = { success: false, message: 'Acción desconocida: ' + action };
@@ -135,4 +145,52 @@ function syncMedidas(ss, data) {
   const sheet = getOrCreateSheet(ss, 'Medidas', headers);
   upsertRows(sheet, data, 'id');
   return { success: true, message: 'Medida sincronizada' };
+}
+
+/**
+ * Devuelve todas las filas de una hoja como objetos { header: valor }.
+ * Ignora filas sin "id".
+ */
+function getAllRows(ss, sheetName) {
+  const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return [];
+  const values = sheet.getDataRange().getValues();
+  if (values.length < 2) return [];
+  const headers = values[0];
+  const rows = [];
+  for (let i = 1; i < values.length; i++) {
+    const row = {};
+    headers.forEach(function (header, idx) {
+      row[header] = values[i][idx];
+    });
+    if (row.id) rows.push(row);
+  }
+  return rows;
+}
+
+function parsePedidoRow(row) {
+  try {
+    row.insumos = row.insumos ? JSON.parse(row.insumos) : [];
+  } catch (e) {
+    row.insumos = [];
+  }
+  try {
+    row.cobros = row.cobros ? JSON.parse(row.cobros) : [];
+  } catch (e) {
+    row.cobros = [];
+  }
+  return row;
+}
+
+/**
+ * Trae todos los datos guardados en la planilla, para que la app
+ * los pueda importar al dispositivo (botón "Sincronizar ahora").
+ */
+function fetchAll(ss) {
+  return {
+    success: true,
+    clientas: getAllRows(ss, 'Clientes'),
+    medidas: getAllRows(ss, 'Medidas'),
+    pedidos: getAllRows(ss, 'Pedidos').map(parsePedidoRow),
+  };
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
+import { Modal } from '../components/Modal';
 import { useConfig } from '../hooks/useConfig';
 import { useClientas } from '../hooks/useClientas';
 import { usePedidos } from '../hooks/usePedidos';
@@ -8,12 +9,16 @@ import { clearAllData } from '../db/database';
 import { formatFechaHora } from '../utils/format';
 import * as clientasDb from '../db/clientasDb';
 import type { Medida } from '../db/schema';
-import { APP_VERSION, forceUpdateApp } from '../utils/version';
+import { APP_VERSION, forceFullReset } from '../utils/version';
+import { checkForUpdates, applyUpdate } from '../utils/pwaUpdate';
+import { checkRemoteChanges, applyRemoteChanges, hasChanges, type RemoteChanges } from '../sync/pull';
+
+type UpdateModalState = 'checking' | 'up-to-date' | 'available' | 'applying' | null;
 
 export function Configuracion(): JSX.Element {
   const { config, save, verificarConexion, sincronizarAhora } = useConfig();
-  const { clientas } = useClientas();
-  const { pedidos } = usePedidos();
+  const { clientas, reload: reloadClientas } = useClientas();
+  const { pedidos, reload: reloadPedidos } = usePedidos();
 
   const [nombreAtelier, setNombreAtelier] = useState('');
   const [precioPorHoraDefault, setPrecioPorHoraDefault] = useState('');
@@ -25,7 +30,11 @@ export function Configuracion(): JSX.Element {
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
   const [confirmacionBorrar, setConfirmacionBorrar] = useState('');
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
-  const [actualizando, setActualizando] = useState(false);
+
+  const [pendingChanges, setPendingChanges] = useState<RemoteChanges | null>(null);
+  const [importando, setImportando] = useState(false);
+
+  const [updateModal, setUpdateModal] = useState<UpdateModalState>(null);
 
   useEffect(() => {
     setNombreAtelier(config.nombreAtelier ?? '');
@@ -67,14 +76,46 @@ export function Configuracion(): JSX.Element {
   }
 
   async function handleSincronizarAhora(): Promise<void> {
+    if (!config.appsScriptUrl) return;
     setSincronizando(true);
+    setSyncMsg(null);
     try {
-      const result = await sincronizarAhora();
-      setSyncMsg(`Sincronizado: ${result.ok} ok, ${result.failed} con error.`);
+      const pushResult = await sincronizarAhora();
+      const changes = await checkRemoteChanges(config.appsScriptUrl);
+      if (hasChanges(changes)) {
+        setPendingChanges(changes);
+      } else {
+        setSyncMsg(
+          `Enviado: ${pushResult.ok} ok, ${pushResult.failed} con error. No hay datos nuevos en Google Sheets.`
+        );
+      }
     } catch (err) {
       setSyncMsg(err instanceof Error ? err.message : 'Error al sincronizar.');
     } finally {
       setSincronizando(false);
+    }
+  }
+
+  async function handleConfirmarImport(): Promise<void> {
+    if (!pendingChanges) return;
+    setImportando(true);
+    try {
+      await applyRemoteChanges(pendingChanges);
+      await Promise.all([reloadClientas(), reloadPedidos()]);
+      const totalNuevos =
+        pendingChanges.clientasNuevas.length +
+        pendingChanges.medidasNuevas.length +
+        pendingChanges.pedidosNuevos.length;
+      const totalActualizados =
+        pendingChanges.clientasActualizadas.length +
+        pendingChanges.medidasActualizadas.length +
+        pendingChanges.pedidosActualizados.length;
+      setSyncMsg(`Importado: ${totalNuevos} nuevos, ${totalActualizados} actualizados.`);
+    } catch (err) {
+      setSyncMsg(err instanceof Error ? err.message : 'Error al importar los datos.');
+    } finally {
+      setImportando(false);
+      setPendingChanges(null);
     }
   }
 
@@ -108,10 +149,25 @@ export function Configuracion(): JSX.Element {
     window.location.reload();
   }
 
-  async function handleForzarActualizacion(): Promise<void> {
-    setActualizando(true);
-    await forceUpdateApp();
+  async function handleBuscarActualizaciones(): Promise<void> {
+    setUpdateModal('checking');
+    const disponible = await checkForUpdates();
+    setUpdateModal(disponible ? 'available' : 'up-to-date');
   }
+
+  async function handleAplicarActualizacion(): Promise<void> {
+    setUpdateModal('applying');
+    await applyUpdate();
+  }
+
+  const totalNuevosPendientes = pendingChanges
+    ? pendingChanges.clientasNuevas.length + pendingChanges.medidasNuevas.length + pendingChanges.pedidosNuevos.length
+    : 0;
+  const totalActualizadosPendientes = pendingChanges
+    ? pendingChanges.clientasActualizadas.length +
+      pendingChanges.medidasActualizadas.length +
+      pendingChanges.pedidosActualizados.length
+    : 0;
 
   return (
     <Layout title="Configuración">
@@ -257,13 +313,70 @@ export function Configuracion(): JSX.Element {
           type="button"
           className="btn btn-outline"
           style={{ marginTop: 'var(--space-sm)' }}
-          onClick={() => void handleForzarActualizacion()}
-          disabled={actualizando}
+          onClick={() => void handleBuscarActualizaciones()}
         >
-          {actualizando ? 'Actualizando...' : '🔄 Buscar actualizaciones'}
+          🔄 Buscar actualizaciones
         </button>
-        <p className="card-meta">Si no ves los últimos cambios, tocá este botón para forzar la actualización.</p>
       </section>
+
+      {pendingChanges && (
+        <Modal title="Datos nuevos en Google Sheets" onClose={() => !importando && setPendingChanges(null)}>
+          <p>
+            Se encontraron <strong>{totalNuevosPendientes}</strong> registro(s) nuevo(s) y{' '}
+            <strong>{totalActualizadosPendientes}</strong> actualizado(s) en la planilla que no están en este
+            dispositivo. ¿Querés traerlos?
+          </p>
+          <p className="card-meta">
+            {pendingChanges.clientasNuevas.length + pendingChanges.clientasActualizadas.length} clientas ·{' '}
+            {pendingChanges.medidasNuevas.length + pendingChanges.medidasActualizadas.length} medidas ·{' '}
+            {pendingChanges.pedidosNuevos.length + pendingChanges.pedidosActualizados.length} pedidos
+          </p>
+          <div className="modal-actions">
+            <button type="button" className="btn btn-outline" onClick={() => setPendingChanges(null)} disabled={importando}>
+              Cancelar
+            </button>
+            <button type="button" className="btn btn-primary" onClick={() => void handleConfirmarImport()} disabled={importando}>
+              {importando ? 'Importando...' : 'Traer al dispositivo'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {updateModal && (
+        <Modal title="Buscar actualizaciones" onClose={() => updateModal !== 'applying' && setUpdateModal(null)}>
+          {updateModal === 'checking' && <p>Buscando una nueva versión...</p>}
+          {updateModal === 'up-to-date' && (
+            <>
+              <p>Ya tenés la última versión instalada (v{APP_VERSION}).</p>
+              <p className="card-meta">
+                Si igual no ves cambios recientes, probá una limpieza completa de caché.
+              </p>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-outline" onClick={() => void forceFullReset()}>
+                  Limpieza completa
+                </button>
+                <button type="button" className="btn btn-primary" onClick={() => setUpdateModal(null)}>
+                  Cerrar
+                </button>
+              </div>
+            </>
+          )}
+          {updateModal === 'available' && (
+            <>
+              <p>Hay una nueva versión disponible.</p>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-outline" onClick={() => setUpdateModal(null)}>
+                  Más tarde
+                </button>
+                <button type="button" className="btn btn-primary" onClick={() => void handleAplicarActualizacion()}>
+                  Actualizar ahora
+                </button>
+              </div>
+            </>
+          )}
+          {updateModal === 'applying' && <p>Descargando la nueva versión y reiniciando la app...</p>}
+        </Modal>
+      )}
     </Layout>
   );
 }
