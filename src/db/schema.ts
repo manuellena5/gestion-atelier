@@ -73,16 +73,22 @@ export const STORES = {
 
 export const MEDIDAS_BASICAS = [
   'Contorno cuello',
-  'Cintura',
-  'Busto',
-  'Cadera',
-  'Largo manga',
-  'Largo espalda',
-  'Ancho hombro',
-  'Altura busto',
-  'Separación busto',
+  'Contorno busto',
+  'Contorno cintura',
+  'Contorno 1° cadera',
+  'Contorno 2° cadera',
+  'Altura cadera',
+  'Ancho de hombros',
+  'Ancho de espalda',
+  'Largo de espalda',
+  'Altura de busto',
+  'Separación de busto',
+  'Seno superior',
+  'Seno inferior',
   'Taza corpiño',
-  'Ancho espalda',
+  'Largo de manga',
+  'Contorno de puño',
+  'Largo de falda',
 ] as const;
 
 export type SyncAction = 'syncClientas' | 'syncPedidos' | 'syncMedidas';

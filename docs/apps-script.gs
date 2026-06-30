@@ -2,14 +2,15 @@
  * INSTRUCCIONES:
  * 1. Ir a script.google.com → Nuevo proyecto
  * 2. Pegar este código reemplazando el contenido por defecto
- * 3. Cambiar SPREADSHEET_ID por el ID de tu Google Sheet
- *    (lo encontrás en la URL: https://docs.google.com/spreadsheets/d/ESTE_ES_EL_ID/edit)
- * 4. Asegurate de que la hoja tenga 3 pestañas llamadas: "Clientes", "Pedidos", "Medidas"
- * 5. Clic en "Implementar" → "Nueva implementación"
- * 6. Tipo: "Aplicación web"
- * 7. Ejecutar como: "Yo"
- * 8. Acceso: "Cualquier persona"
- * 9. Copiar la URL generada y pegarla en Configuración de la app
+ *    (SPREADSHEET_ID ya está configurado con la planilla del atelier;
+ *    si usás esto para otra planilla, reemplazalo por el ID de la tuya,
+ *    que se encuentra en la URL: https://docs.google.com/spreadsheets/d/ESTE_ES_EL_ID/edit)
+ * 3. Asegurate de que la hoja tenga 3 pestañas llamadas: "Clientes", "Pedidos", "Medidas"
+ * 4. Clic en "Implementar" → "Nueva implementación"
+ * 5. Tipo: "Aplicación web"
+ * 6. Ejecutar como: "Yo"
+ * 7. Acceso: "Cualquier persona"
+ * 8. Copiar la URL generada y pegarla en Configuración de la app
  *
  * Si ya tenías este script desplegado y lo estás actualizando (por ejemplo,
  * para sumar la acción "fetchAll" que trae los datos guardados):
@@ -19,7 +20,7 @@
  * actualizarla en la app.
  */
 
-const SPREADSHEET_ID = 'PEGA_AQUI_EL_ID_DE_TU_SPREADSHEET';
+const SPREADSHEET_ID = '1r6tc1gSIBjzMmPogCkFrlt4U7e6c_HuBrJlmO0jtDpU';
 
 function doGet(e) {
   return ContentService.createTextOutput(
