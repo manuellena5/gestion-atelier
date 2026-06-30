@@ -19,14 +19,14 @@ interface ClienteDetailProps {
   onNewPedido: (clientaId: string) => void;
 }
 
-interface MedidaExtraCardProps {
+interface MedidaCardProps {
   medida: Medida;
   onLongPress: (medida: Medida) => void;
   onEditClick: (medida: Medida) => void;
   onDeleteClick: (medida: Medida) => void;
 }
 
-function MedidaExtraCard({ medida, onLongPress, onEditClick, onDeleteClick }: MedidaExtraCardProps): JSX.Element {
+function MedidaCard({ medida, onLongPress, onEditClick, onDeleteClick }: MedidaCardProps): JSX.Element {
   const longPressHandlers = useLongPress(() => onLongPress(medida));
 
   return (
@@ -66,46 +66,6 @@ function MedidaExtraCard({ medida, onLongPress, onEditClick, onDeleteClick }: Me
   );
 }
 
-interface MedidaBasicaRowProps {
-  medida: Medida;
-  locked: boolean;
-  onUnlock: (id: string) => void;
-  onBlurSave: (medida: Medida, valor: string) => void;
-}
-
-function MedidaBasicaRow({ medida, locked, onUnlock, onBlurSave }: MedidaBasicaRowProps): JSX.Element {
-  const longPressHandlers = useLongPress(() => onUnlock(medida.id));
-
-  if (locked) {
-    return (
-      <div className="field field-locked" {...longPressHandlers}>
-        <span className="field-label">
-          {medida.nombre} ({medida.unidad})
-        </span>
-        <div className="field-locked-value">
-          <span>{medida.valor}</span>
-          <span aria-hidden="true">🔒</span>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="field">
-      <label className="field-label" htmlFor={`medida-${medida.id}`}>
-        {medida.nombre} ({medida.unidad})
-      </label>
-      <input
-        id={`medida-${medida.id}`}
-        className="field-input"
-        defaultValue={medida.valor}
-        autoFocus={medida.valor !== ''}
-        onBlur={(e) => onBlurSave(medida, e.target.value)}
-      />
-    </div>
-  );
-}
-
 export function ClienteDetail({
   clientaId,
   onBack,
@@ -114,7 +74,7 @@ export function ClienteDetail({
   onNewPedido,
 }: ClienteDetailProps): JSX.Element {
   const { clientas } = useClientas();
-  const { medidas, saveMedidaValor, addMedida, editMedida, removeMedida } = useMedidas(clientaId);
+  const { medidas, addMedida, editMedida, removeMedida } = useMedidas(clientaId);
   const { pedidos } = usePedidos();
 
   const [showExtraModal, setShowExtraModal] = useState(false);
@@ -130,8 +90,6 @@ export function ClienteDetail({
   const [editUnidad, setEditUnidad] = useState('cm');
   const [editPrenda, setEditPrenda] = useState('');
   const [deletingMedida, setDeletingMedida] = useState<Medida | null>(null);
-
-  const [unlockedBasicaIds, setUnlockedBasicaIds] = useState<Set<string>>(new Set());
 
   const clienta = clientas.find((c) => c.id === clientaId);
   const medidasBasicas = useMemo(() => medidas.filter((m) => m.esBasica), [medidas]);
@@ -199,25 +157,6 @@ export function ClienteDetail({
     setDeletingMedida(null);
   }
 
-  function unlockBasica(id: string): void {
-    setUnlockedBasicaIds((prev) => new Set(prev).add(id));
-  }
-
-  function relockBasica(id: string): void {
-    setUnlockedBasicaIds((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-  }
-
-  function handleBasicaBlur(medida: Medida, valor: string): void {
-    if (valor !== medida.valor) {
-      void saveMedidaValor(medida, valor);
-    }
-    relockBasica(medida.id);
-  }
-
   if (!clienta) {
     return (
       <Layout title="Clienta" onBack={onBack} backLabel="Clientes">
@@ -240,23 +179,18 @@ export function ClienteDetail({
     >
       <section className="section">
         <h2 className="section-title">Medidas básicas</h2>
-        <Card>
-          {medidasBasicas.map((medida) => {
-            const locked = medida.valor.trim() !== '' && !unlockedBasicaIds.has(medida.id);
-            return (
-              <MedidaBasicaRow
-                key={medida.id}
-                medida={medida}
-                locked={locked}
-                onUnlock={unlockBasica}
-                onBlurSave={handleBasicaBlur}
-              />
-            );
-          })}
-        </Card>
-        <p className="card-meta">
-          Las medidas ya cargadas quedan bloqueadas. Mantené presionada una medida 2 segundos para editarla.
-        </p>
+        <div className="card-list">
+          {medidasBasicas.map((medida) => (
+            <MedidaCard
+              key={medida.id}
+              medida={medida}
+              onLongPress={openActions}
+              onEditClick={startEdit}
+              onDeleteClick={startDelete}
+            />
+          ))}
+        </div>
+        <p className="card-meta">Tocá ✏️ para editar o 🗑️ para borrar.</p>
       </section>
 
       <section className="section">
@@ -266,7 +200,7 @@ export function ClienteDetail({
         {medidasExtra.length === 0 && <p className="text-muted">Sin medidas personalizadas.</p>}
         <div className="card-list">
           {medidasExtra.map((medida) => (
-            <MedidaExtraCard
+            <MedidaCard
               key={medida.id}
               medida={medida}
               onLongPress={openActions}

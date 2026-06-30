@@ -266,29 +266,6 @@
   flex: 1;
 }
 
-.field-locked {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-sm);
-  padding: var(--space-md);
-  background: var(--color-bg);
-  border-radius: var(--radius-sm);
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-.field-locked .field-label {
-  margin-bottom: 0;
-}
-
-.field-locked-value {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  font-weight: 600;
-}
-
 .icon-btn {
   background: none;
   border: none;
