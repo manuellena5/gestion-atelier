@@ -23,27 +23,38 @@ async function postToAppsScript(
   action: AppsScriptAction,
   data?: Clienta | Pedido | Medida
 ): Promise<AppsScriptResponse> {
+  let response: Response;
   try {
-    const response = await fetch(url, {
+    response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action, data }),
     });
-    if (!response.ok) {
-      throw new Error(`Respuesta HTTP ${response.status}`);
-    }
-    return (await response.json()) as AppsScriptResponse;
   } catch (error) {
-    throw new Error(`No se pudo conectar con Google Sheets: ${String(error)}`);
+    throw new Error(
+      `No se pudo conectar a la URL (revisá tu conexión y que la URL esté bien copiada): ${String(error)}`
+    );
+  }
+
+  if (!response.ok) {
+    throw new Error(`El servidor respondió con error HTTP ${response.status}.`);
+  }
+
+  const text = await response.text();
+  try {
+    return JSON.parse(text) as AppsScriptResponse;
+  } catch {
+    const preview = text.slice(0, 120).replace(/\s+/g, ' ').trim();
+    throw new Error(
+      `La respuesta no fue JSON válido (¿la implementación quedó con acceso "Cualquier persona" y fue autorizada al menos una vez?). Respuesta recibida: "${preview}"`
+    );
   }
 }
 
-export async function testConnection(url: string): Promise<boolean> {
-  try {
-    const result = await postToAppsScript(url, 'test');
-    return result.success === true;
-  } catch {
-    return false;
+export async function testConnection(url: string): Promise<void> {
+  const result = await postToAppsScript(url, 'test');
+  if (!result.success) {
+    throw new Error(result.message ?? 'El script respondió sin éxito.');
   }
 }
 

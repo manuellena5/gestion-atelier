@@ -10,7 +10,7 @@ interface UseConfigResult {
   error: string | null;
   reload: () => Promise<void>;
   save: (data: Partial<AppConfig>) => Promise<AppConfig>;
-  verificarConexion: (url: string) => Promise<boolean>;
+  verificarConexion: (url: string) => Promise<void>;
   sincronizarAhora: () => Promise<{ ok: number; failed: number }>;
 }
 
@@ -46,7 +46,7 @@ export function useConfig(): UseConfigResult {
   );
 
   const verificarConexion = useCallback(async (url: string) => {
-    return await testConnection(url);
+    await testConnection(url);
   }, []);
 
   const sincronizarAhora = useCallback(async () => {

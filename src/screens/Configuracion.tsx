@@ -26,6 +26,7 @@ export function Configuracion(): JSX.Element {
   const [syncAutoEnabled, setSyncAutoEnabled] = useState(false);
   const [verificando, setVerificando] = useState(false);
   const [conexionOk, setConexionOk] = useState<boolean | null>(null);
+  const [conexionError, setConexionError] = useState<string | null>(null);
   const [sincronizando, setSincronizando] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
   const [confirmacionBorrar, setConfirmacionBorrar] = useState('');
@@ -64,12 +65,13 @@ export function Configuracion(): JSX.Element {
   async function handleVerificar(): Promise<void> {
     if (!appsScriptUrl.trim()) return;
     setVerificando(true);
-    setConexionOk(null);
+    setConexionError(null);
     try {
-      const ok = await verificarConexion(appsScriptUrl.trim());
-      setConexionOk(ok);
-    } catch {
+      await verificarConexion(appsScriptUrl.trim());
+      setConexionOk(true);
+    } catch (err) {
       setConexionOk(false);
+      setConexionError(err instanceof Error ? err.message : 'No se pudo conectar.');
     } finally {
       setVerificando(false);
     }
@@ -226,9 +228,8 @@ export function Configuracion(): JSX.Element {
         >
           {verificando ? 'Verificando...' : 'Verificar conexión'}
         </button>
-        {conexionOk !== null && (
-          <p className={conexionOk ? 'text-muted' : 'text-warning'}>{conexionOk ? '✓ Conexión OK' : '✗ No se pudo conectar'}</p>
-        )}
+        {conexionOk === true && <p className="text-muted">✓ Conexión OK</p>}
+        {conexionOk === false && <p className="text-warning">✗ {conexionError}</p>}
 
         <div className="field card-row">
           <label className="field-label" htmlFor="sync-auto">
