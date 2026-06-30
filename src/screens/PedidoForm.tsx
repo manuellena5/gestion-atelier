@@ -136,7 +136,7 @@ export function PedidoForm({ pedidoId, clientaId, onSaved, onCancel }: PedidoFor
 
   return (
     <Layout title={pedidoId ? 'Editar pedido' : 'Nuevo pedido'} onBack={onCancel} backLabel="Volver">
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="form-grid">
         <div className="field">
           <label className="field-label" htmlFor="clienta">
             Clienta *
@@ -197,7 +197,7 @@ export function PedidoForm({ pedidoId, clientaId, onSaved, onCancel }: PedidoFor
           </div>
         </div>
 
-        <div className="field">
+        <div className="field field-full">
           <span className="field-label">Insumos</span>
           <table className="table">
             <thead>
@@ -305,7 +305,7 @@ export function PedidoForm({ pedidoId, clientaId, onSaved, onCancel }: PedidoFor
         </div>
 
         {precioSugerido !== undefined && (
-          <div className="card" style={{ marginBottom: 'var(--space-lg)' }}>
+          <div className="card field-full" style={{ marginBottom: 'var(--space-lg)' }}>
             <p className="card-title">💡 Precio sugerido: {formatMoneda(precioSugerido)}</p>
             <p className="card-meta">
               Costo base {formatMoneda(costoBase)} + {pctGananciaNum}% de ganancia
@@ -327,7 +327,7 @@ export function PedidoForm({ pedidoId, clientaId, onSaved, onCancel }: PedidoFor
         </div>
 
         {pctGananciaReal !== undefined && (
-          <p className="text-muted">% Ganancia real: {pctGananciaReal}%</p>
+          <p className="text-muted field-full">% Ganancia real: {pctGananciaReal}%</p>
         )}
 
         <div className="field">
@@ -343,7 +343,7 @@ export function PedidoForm({ pedidoId, clientaId, onSaved, onCancel }: PedidoFor
           />
         </div>
 
-        <div className="field">
+        <div className="field field-full">
           <label className="field-label" htmlFor="notas">
             Notas
           </label>
@@ -355,9 +355,9 @@ export function PedidoForm({ pedidoId, clientaId, onSaved, onCancel }: PedidoFor
           />
         </div>
 
-        {error && <p className="text-warning">{error}</p>}
+        {error && <p className="text-warning field-full">{error}</p>}
 
-        <button type="submit" className="btn btn-primary" disabled={saving}>
+        <button type="submit" className="btn btn-primary field-full" disabled={saving}>
           {saving ? 'Guardando...' : 'Guardar'}
         </button>
       </form>

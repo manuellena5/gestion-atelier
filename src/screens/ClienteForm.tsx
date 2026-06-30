@@ -54,7 +54,7 @@ export function ClienteForm({ clientaId, onSaved, onCancel }: ClienteFormProps):
 
   return (
     <Layout title={clientaId ? 'Editar clienta' : 'Nueva clienta'} onBack={onCancel} backLabel="Volver">
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="form-grid">
         <div className="field">
           <label className="field-label" htmlFor="nombre">
             Nombre *
@@ -90,7 +90,7 @@ export function ClienteForm({ clientaId, onSaved, onCancel }: ClienteFormProps):
             onChange={(e) => setEmail(e.target.value)}
           />
         </div>
-        <div className="field">
+        <div className="field field-full">
           <label className="field-label" htmlFor="notas">
             Notas
           </label>
@@ -102,9 +102,9 @@ export function ClienteForm({ clientaId, onSaved, onCancel }: ClienteFormProps):
           />
         </div>
 
-        {error && <p className="text-warning">{error}</p>}
+        {error && <p className="text-warning field-full">{error}</p>}
 
-        <button type="submit" className="btn btn-primary" disabled={saving}>
+        <button type="submit" className="btn btn-primary field-full" disabled={saving}>
           {saving ? 'Guardando...' : 'Guardar'}
         </button>
       </form>

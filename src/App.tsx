@@ -52,6 +52,8 @@ export function App(): JSX.Element {
     setHistory([{ name: tab }]);
   }
 
+  const isFormScreen = screen.name === 'cliente-form' || screen.name === 'pedido-form';
+
   let content: JSX.Element;
 
   switch (screen.name) {
@@ -119,9 +121,9 @@ export function App(): JSX.Element {
   }
 
   return (
-    <>
+    <div className={`app-shell ${isFormScreen ? 'app-shell-wide' : ''}`}>
       {content}
-      <BottomNav active={tabForScreen(screen)} onNavigate={goToTab} />
-    </>
+      <BottomNav active={tabForScreen(screen)} onNavigate={goToTab} wide={isFormScreen} />
+    </div>
   );
 }

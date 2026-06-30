@@ -3,6 +3,7 @@ export type NavTab = 'clientes' | 'pedidos' | 'resumen' | 'configuracion';
 interface BottomNavProps {
   active: NavTab;
   onNavigate: (tab: NavTab) => void;
+  wide?: boolean;
 }
 
 const TABS: { id: NavTab; label: string; icon: string }[] = [
@@ -12,9 +13,9 @@ const TABS: { id: NavTab; label: string; icon: string }[] = [
   { id: 'configuracion', label: 'Config', icon: '⚙️' },
 ];
 
-export function BottomNav({ active, onNavigate }: BottomNavProps): JSX.Element {
+export function BottomNav({ active, onNavigate, wide }: BottomNavProps): JSX.Element {
   return (
-    <nav className="bottom-nav" aria-label="Navegación principal">
+    <nav className={`bottom-nav ${wide ? 'bottom-nav-wide' : ''}`} aria-label="Navegación principal">
       {TABS.map((tab) => (
         <button
           key={tab.id}

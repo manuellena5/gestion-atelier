@@ -8,6 +8,7 @@ import { clearAllData } from '../db/database';
 import { formatFechaHora } from '../utils/format';
 import * as clientasDb from '../db/clientasDb';
 import type { Medida } from '../db/schema';
+import { APP_VERSION, forceUpdateApp } from '../utils/version';
 
 export function Configuracion(): JSX.Element {
   const { config, save, verificarConexion, sincronizarAhora } = useConfig();
@@ -24,6 +25,7 @@ export function Configuracion(): JSX.Element {
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
   const [confirmacionBorrar, setConfirmacionBorrar] = useState('');
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
+  const [actualizando, setActualizando] = useState(false);
 
   useEffect(() => {
     setNombreAtelier(config.nombreAtelier ?? '');
@@ -104,6 +106,11 @@ export function Configuracion(): JSX.Element {
     await clearAllData();
     setConfirmacionBorrar('');
     window.location.reload();
+  }
+
+  async function handleForzarActualizacion(): Promise<void> {
+    setActualizando(true);
+    await forceUpdateApp();
   }
 
   return (
@@ -239,6 +246,23 @@ export function Configuracion(): JSX.Element {
         >
           🗑️ Borrar todos los datos
         </button>
+      </section>
+
+      <hr className="divider" />
+
+      <section className="section">
+        <h2 className="section-title">Acerca de</h2>
+        <p className="card-meta">Versión {APP_VERSION}</p>
+        <button
+          type="button"
+          className="btn btn-outline"
+          style={{ marginTop: 'var(--space-sm)' }}
+          onClick={() => void handleForzarActualizacion()}
+          disabled={actualizando}
+        >
+          {actualizando ? 'Actualizando...' : '🔄 Buscar actualizaciones'}
+        </button>
+        <p className="card-meta">Si no ves los últimos cambios, tocá este botón para forzar la actualización.</p>
       </section>
     </Layout>
   );

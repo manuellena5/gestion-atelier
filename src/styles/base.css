@@ -16,6 +16,10 @@ body {
 }
 
 #root {
+  min-height: 100vh;
+}
+
+.app-shell {
   max-width: 430px;
   margin: 0 auto;
   min-height: 100vh;
@@ -23,6 +27,13 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
+  transition: max-width 0.15s ease;
+}
+
+@media (min-width: 768px) {
+  .app-shell.app-shell-wide {
+    max-width: 720px;
+  }
 }
 
 h1, h2, h3, h4, p {
